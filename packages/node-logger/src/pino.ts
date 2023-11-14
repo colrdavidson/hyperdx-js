@@ -1,7 +1,7 @@
 import build from 'pino-abstract-transport';
 
 import hdx from './debug';
-import { Logger, parsePinoLog } from './logger';
+import { getLogger, parsePinoLog } from './logger';
 
 import type { LoggerOptions } from './logger';
 
@@ -22,7 +22,7 @@ export type HyperDXPinoOptions = LoggerOptions & {
 export default (opts: HyperDXPinoOptions) => {
   try {
     hdx('Initializing HyperDX pino transport...');
-    const logger = new Logger(opts);
+    const logger = getLogger(opts);
     hdx(`HyperDX pino transport initialized!`);
     return build(
       async function (source) {

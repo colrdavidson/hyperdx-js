@@ -1,7 +1,7 @@
 import Transport from 'winston-transport';
 
 import hdx from './debug';
-import { Logger, parseWinstonLog } from './logger';
+import { getLogger, parseWinstonLog } from './logger';
 
 import type { LoggerOptions } from './logger';
 
@@ -28,7 +28,7 @@ export default class HyperDXWinston extends Transport {
     hdx('Initializing HyperDX winston transport...');
     super({ level: maxLevel ?? 'info' });
     this.getCustomMeta = getCustomMeta;
-    this.logger = new Logger({
+    this.logger = getLogger({
       apiKey,
       baseUrl,
       bufferSize,

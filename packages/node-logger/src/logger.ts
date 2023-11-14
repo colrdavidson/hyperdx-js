@@ -69,7 +69,77 @@ export type LoggerOptions = {
   timeout?: number; // The read/write/connection timeout in milliseconds
 };
 
-export class Logger {
+class Logger_V1 {
+  constructor({
+    apiKey,
+    baseUrl,
+    timeout,
+  }: {
+    apiKey: string;
+    baseURL?: string;
+    timeout?: number;
+  }) {
+    if (!apiKey) {
+      console.error(`${LOG_PREFIX} API key not found`);
+    }
+
+    let protocol;
+    let host;
+    let port;
+    if (baseUrl) {
+      const url = new URL(baseUrl);
+      protocol = url.protocol.replace(':', '');
+      host = url.hostname;
+      port = url.port;
+      console.warn(
+        `${LOG_PREFIX} Sending logs to ${protocol}://${host}:${port} `,
+      );
+    }
+
+    let otlpConfig = {
+      compression: 'gzip',
+      hostname: host,
+      timeout: timeout,
+    };
+
+    let loggerProvider = new LoggerProvider();
+    loggerProvider.addLogRecordProcessor(
+      new SimpleLogRecordProcessor(new OTLPTraceExporter(otlpConfig)),
+    );
+    logs.setGlobalLoggerProvider(loggerProvider);
+
+    this.logger = logs.getLogger('default');
+  }
+
+  sendAndClose(callback?: (error: Error, bulk: object) => void): void {}
+
+  postMessage(level: string, body: string): void {
+    let svNumber = SeverityNumber.UNSPECIFIED;
+    switch (level) {
+      case 'trace':
+        svNumber = SeverityNumber.TRACE;
+      case 'debug':
+        svNumber = SeverityNumber.DEBUG;
+      case 'info':
+        svNumber = SeverityNumber.INFO;
+      case 'warn':
+        svNumber = SeverityNumber.WARN;
+      case 'error':
+        svNumber = SeverityNumber.ERROR;
+      case 'fatal':
+        svNumber = SeverityNumber.FATAL;
+    }
+
+    this.logger.emit({
+      severityNumber: svNumber,
+      severityText: level,
+      body: body,
+      attributes: { 'log.type': 'LogRecord' },
+    });
+  }
+}
+
+class Logger_V0 {
   private readonly service: string;
 
   private readonly client: ILogger | null;
@@ -155,3 +225,26 @@ export class Logger {
     });
   }
 }
+
+export const getLogger = (
+  apiKey: string,
+  baseUrl?: string,
+  bufferSize?: number,
+  sendIntervalMs?: number,
+  service?: string,
+  timeout?: number,
+  version?: number = 1,
+) => {
+  if (version == 1) {
+    return Logger_V1(apiKey, baseUrl, timeout);
+  } else {
+    return Logger_V0(
+      apiKey,
+      baseUrl,
+      bufferSize,
+      sendIntervalMs,
+      service,
+      timeout,
+    );
+  }
+};
